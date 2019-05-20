@@ -1,0 +1,157 @@
+---
+title: "fifa"
+author: "Zhijun LIu"
+date: "2019/4/3"
+output: html_document
+---
+
+```{r}
+data = read.csv("data.csv",stringsAsFactors = F)
+fifa = data
+fifa = fifa[,-which(names(fifa)%in%c('X','Special'))]
+```
+
+```{r}
+head(fifa,30)
+```
+
+
+## Covert Value, Wage and Release.clause into numeric variables and the default unit is 1000€
+```{r}
+library(stringr)
+
+fifa$valueNum = as.numeric(str_sub(fifa$Value, 2, -2))
+fifa$valueScale = str_sub(fifa$Value,-1,-1)
+for (i in 1:length(fifa$Value)){
+  if(fifa$valueScale[i] == 'M'){fifa$Value[i] =  fifa$valueNum[i]*1000}
+  else if(fifa$valueScale[i] == 'K'){fifa$Value[i] =  fifa$valueNum[i]}
+  else {fifa$Value[i] =  fifa$valueNum[i]/100}
+}
+
+fifa$wageNum = as.numeric(str_sub(fifa$Wage, 2, -2))
+fifa$wageScale = str_sub(fifa$Wage,-1,-1)
+for (i in 1:length(fifa$Wage)){
+  if(fifa$wageScale[i] == 'M'){fifa$Wage[i] =  fifa$wageNum[i]*1000}
+  else if(fifa$wageScale[i] == 'K'){fifa$Wage[i] =  fifa$wageNum[i]}
+  else {fifa$Wage[i] =  fifa$wageNum[i]/100}
+}
+fifa$Release.ClauseNum = as.numeric(str_sub(fifa$Release.Clause, 2, -2))
+fifa$Release.ClauseScale = str_sub(fifa$Release.Clause,-1,-1)
+for (i in 1:length(fifa$Release.Clause)){
+  if(fifa$Release.ClauseScale[i] == 'M'){fifa$Release.Clause[i] =  fifa$Release.ClauseNum[i]*1000}
+  else if(fifa$Release.ClauseScale[i] == 'K'){fifa$Release.Clause[i] =  fifa$Release.ClauseNum[i]}
+  else{fifa$Release.Clause[i] =  fifa$Release.ClauseNum[i]/100}
+}
+fifa = fifa[,-which(names(fifa)%in%c('valueScale','valueNum','wageScale','wageNum','Release.ClauseNum','Release.ClauseScale'))]
+```
+
+```{r}
+head(fifa)
+```
+
+
+## Split Work.Rate into attack_work_rate and defend_work_rate
+```{r}
+fifa$attack_Work.Rate<-gsub('[:/:][: :][:A-Z:][:a-z:]+','',fifa$Work.Rate)
+fifa$defend_Work.Rate<-gsub('[:A-Z:][:a-z:]+[:/:][: :]','',fifa$Work.Rate)
+fifa = fifa[,-which(names(fifa)%in%c('Work.Rate'))]
+```
+## Recalculate the height and set the default unit as cm
+#### Height(cm)=30.48*feet + 2.54*inch 
+```{r}
+fifa$height_feet<-as.numeric(gsub("[:':][:0-9:]+",'',fifa$Height))
+fifa$height_inch<-as.numeric(gsub("[:0-9:]+[:':]",'',fifa$Height))
+fifa$Height = fifa$height_feet*30.48+fifa$height_inch*2.54
+fifa = fifa[,-which(names(fifa)%in%c('height_feet','height_inch'))]
+```
+
+## turn Jun 30, 2019 to 2019
+```{r}
+fifa$Contract.Valid.Until <- gsub('[:A-Z:][:a-z:]+[: :][:0-9:]+[:,:]','',fifa$Contract.Valid.Until)
+```
+
+## Turn the weight(lbs) into numeric variable and its unit is lbs.
+```{r}
+fifa$Weight = as.numeric(str_sub(fifa$Weight,1,-4))
+```
+
+## Change the data type of Joined into date type
+#### For example: turn 'Jul 1, 2004' into '2004-07-01'
+```{r}
+fifa$Joined <- gsub("Jan",'1',fifa$Joined)
+fifa$Joined <- gsub("Feb",'2',fifa$Joined)
+fifa$Joined <- gsub("Mar",'3',fifa$Joined)
+fifa$Joined <- gsub("Apr",'4',fifa$Joined)
+fifa$Joined <- gsub("May",'5',fifa$Joined)
+fifa$Joined <- gsub("Jun",'6',fifa$Joined)
+fifa$Joined <- gsub("Jul",'7',fifa$Joined)
+fifa$Joined <- gsub("Aug",'8',fifa$Joined)
+fifa$Joined <- gsub("Sep",'9',fifa$Joined)
+fifa$Joined <- gsub("Oct",'10',fifa$Joined)
+fifa$Joined <- gsub("Nov",'11',fifa$Joined)
+fifa$Joined <- gsub("Dec",'12',fifa$Joined)
+fifa$Joined <- as.Date(fifa$Joined,format = '%m %d, %Y')
+```
+
+## Separate each player's personal rating from total rating and convert the data type into numeric type
+```{r}
+#fifa$personal_rating<- as.numeric(gsub("[:0-9:]+[:+:]",'',fifa2$LS))
+fifa$LS <-as.numeric(gsub("[:+:][:0-9:]+",'',fifa$LS)) + as.numeric(gsub("[:0-9:]+[:+:]",'',fifa$LS))
+fifa$ST <-as.numeric(gsub("[:+:][:0-9:]+",'',fifa$ST)) + as.numeric(gsub("[:0-9:]+[:+:]",'',fifa$ST)) 
+fifa$RS <-as.numeric(gsub("[:+:][:0-9:]+",'',fifa$RS))+ as.numeric(gsub("[:0-9:]+[:+:]",'',fifa$RS))
+fifa$LW <-as.numeric(gsub("[:+:][:0-9:]+",'',fifa$LW))+ as.numeric(gsub("[:0-9:]+[:+:]",'',fifa$LW))
+fifa$LF <-as.numeric(gsub("[:+:][:0-9:]+",'',fifa$LF))+ as.numeric(gsub("[:0-9:]+[:+:]",'',fifa$LF))
+fifa$CF <-as.numeric(gsub("[:+:][:0-9:]+",'',fifa$CF))+ as.numeric(gsub("[:0-9:]+[:+:]",'',fifa$CF))
+fifa$RF <-as.numeric(gsub("[:+:][:0-9:]+",'',fifa$RF))+ as.numeric(gsub("[:0-9:]+[:+:]",'',fifa$RF))
+fifa$RW <-as.numeric(gsub("[:+:][:0-9:]+",'',fifa$RW))+ as.numeric(gsub("[:0-9:]+[:+:]",'',fifa$RW))
+fifa$LAM <-as.numeric(gsub("[:+:][:0-9:]+",'',fifa$LAM))+ as.numeric(gsub("[:0-9:]+[:+:]",'',fifa$LAM))
+fifa$CAM <-as.numeric(gsub("[:+:][:0-9:]+",'',fifa$CAM))+ as.numeric(gsub("[:0-9:]+[:+:]",'',fifa$CAM))
+fifa$RAM <-as.numeric(gsub("[:+:][:0-9:]+",'',fifa$RAM))+ as.numeric(gsub("[:0-9:]+[:+:]",'',fifa$RAM))
+fifa$LM <-as.numeric(gsub("[:+:][:0-9:]+",'',fifa$LM))+ as.numeric(gsub("[:0-9:]+[:+:]",'',fifa$LM))
+fifa$LCM <-as.numeric(gsub("[:+:][:0-9:]+",'',fifa$LCM))+ as.numeric(gsub("[:0-9:]+[:+:]",'',fifa$LCM))
+fifa$CM <-as.numeric(gsub("[:+:][:0-9:]+",'',fifa$CM))+ as.numeric(gsub("[:0-9:]+[:+:]",'',fifa$CM))
+fifa$RCM <-as.numeric(gsub("[:+:][:0-9:]+",'',fifa$RCM))+ as.numeric(gsub("[:0-9:]+[:+:]",'',fifa$RCM))
+fifa$RM <-as.numeric(gsub("[:+:][:0-9:]+",'',fifa$RM))+ as.numeric(gsub("[:0-9:]+[:+:]",'',fifa$RM))
+fifa$LWB <-as.numeric(gsub("[:+:][:0-9:]+",'',fifa$LWB))+ as.numeric(gsub("[:0-9:]+[:+:]",'',fifa$LWB))
+fifa$LDM <-as.numeric(gsub("[:+:][:0-9:]+",'',fifa$LDM))+ as.numeric(gsub("[:0-9:]+[:+:]",'',fifa$LDM))
+fifa$CDM <-as.numeric(gsub("[:+:][:0-9:]+",'',fifa$CDM))+ as.numeric(gsub("[:0-9:]+[:+:]",'',fifa$CDM))
+fifa$RDM <-as.numeric(gsub("[:+:][:0-9:]+",'',fifa$RDM))+ as.numeric(gsub("[:0-9:]+[:+:]",'',fifa$RDM))
+fifa$RWB <-as.numeric(gsub("[:+:][:0-9:]+",'',fifa$RWB))+ as.numeric(gsub("[:0-9:]+[:+:]",'',fifa$RWB))
+fifa$LB <-as.numeric(gsub("[:+:][:0-9:]+",'',fifa$LB))+ as.numeric(gsub("[:0-9:]+[:+:]",'',fifa$LB))
+fifa$LCB <-as.numeric(gsub("[:+:][:0-9:]+",'',fifa$LCB))+ as.numeric(gsub("[:0-9:]+[:+:]",'',fifa$LCB))
+fifa$CB <-as.numeric(gsub("[:+:][:0-9:]+",'',fifa$CB))+ as.numeric(gsub("[:0-9:]+[:+:]",'',fifa$CB))
+fifa$RCB <-as.numeric(gsub("[:+:][:0-9:]+",'',fifa$RCB))+ as.numeric(gsub("[:0-9:]+[:+:]",'',fifa$RCB))
+fifa$RB <-as.numeric(gsub("[:+:][:0-9:]+",'',fifa$RB))+ as.numeric(gsub("[:0-9:]+[:+:]",'',fifa$RB))
+```
+
+## Data type
+```{r}
+fifa$Nationality = as.factor(fifa$Nationality)
+fifa$Club = as.factor(fifa$Club)
+fifa$Preferred.Foot = as.factor(fifa$Preferred.Foot)
+fifa$Real.Face = as.factor(fifa$Real.Face)
+fifa$Position = as.factor(fifa$Position)
+fifa$attack_Work.Rate = as.factor(fifa$attack_Work.Rate)
+fifa$defend_Work.Rate = as.factor(fifa$defend_Work.Rate)
+
+fifa$Value = as.numeric(fifa$Value)
+fifa$Wage = as.numeric(fifa$Wage)
+fifa$Release.Clause = as.numeric(fifa$Release.Clause)
+
+```
+
+```{r}
+fifa$Body.Type <- gsub("Akinfenwa",'Stocky',fifa$Body.Type)
+fifa$Body.Type <- gsub("C. Ronaldo",'Stocky',fifa$Body.Type)
+fifa$Body.Type <- gsub("Messi",'Normal',fifa$Body.Type)
+fifa$Body.Type <- gsub("Neymar",'Normal',fifa$Body.Type)
+fifa$Body.Type <- gsub("PLAYER_BODY_TYPE_25",'Normal',fifa$Body.Type)
+fifa$Body.Type <- gsub("Shaqiri",'Stocky',fifa$Body.Type)
+fifa$Body.Type <- gsub("Courtois",'Lean',fifa$Body.Type)
+```
+
+
+```{r}
+#write.csv(fifa, 'fifa.csv',row.names = F)
+```
+

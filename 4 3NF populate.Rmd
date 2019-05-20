@@ -1,0 +1,232 @@
+---
+title: "Fifa 3NF"
+author: "Zhijun LIu"
+date: "2019/4/14"
+output: html_document
+---
+
+```{r}
+library(RPostgreSQL)
+require('RPostgreSQL');
+require('dplyr');
+require('tidyr');
+drv <- dbDriver('PostgreSQL')
+con <- dbConnect(drv, dbname = 'sql_fifa', host = 's19db.apan5310.com', port = 50203, user = 'postgres', password = 'rjxklxet')
+```
+
+# continent
+```{r}
+continent = data.frame(
+  continent_id = c(1:7),
+  continent_name = c("AF","AN","AS","EU","NA","OC","SA")
+)
+continent$continent_name = as.character(continent$continent_name)
+dbWriteTable(con, "continent", continent,,row.names=F, append=T)
+```
+
+# country_initial
+```{r}
+country = read.csv("countries and continents.csv",stringsAsFactors = F)
+country = country[,which(names(country)%in%c('name','Continent'))]
+country = country[-c(1,2),]
+country=bind_cols('country_id' = 1:nrow(country),country)
+country$Continent[is.na(country$Continent)] = "NA"
+colnames(country)[colnames(country)=="name"] <- "nationality"
+colnames(country) = tolower(colnames(country))
+country = merge(country,continent,by.x = "continent",by.y = "continent_name",all.x=T,sort=F)
+country = country[order(country$country_id), ]
+country=country[,-1]
+```
+
+# read and merge fifa
+```{r}
+fifa = read.csv("fifa.csv",stringsAsFactors = F)
+library(stringr)
+fifa$Nationality <- gsub("Bosnia Herzegovina",'Bosnia',fifa$Nationality)
+fifa$Nationality <- gsub("China PR",'China',fifa$Nationality)
+fifa$Nationality <- gsub("Central African Rep.",'Central African Republic',fifa$Nationality)
+fifa$Nationality <- gsub("Congo",'Congo - Brazzaville',fifa$Nationality)
+fifa$Nationality <- gsub("Curacao",'Curaçao',fifa$Nationality)
+fifa$Nationality <- gsub("DR Congo",'Congo',fifa$Nationality)
+fifa$Nationality <- gsub("England",'UK',fifa$Nationality)
+fifa$Nationality <- gsub("FYR Macedonia",'Macedonia',fifa$Nationality)
+fifa$Nationality <- gsub("Guinea Bissau",'Guinea-Bissau',fifa$Nationality)
+fifa$Nationality <- gsub("Ivory Coast",'Côte d’Ivoire',fifa$Nationality)
+fifa$Nationality <- gsub("Korea Republic",'South Korea',fifa$Nationality)
+####
+fifa$Nationality <- gsub("Kosovo",'China',fifa$Nationality)
+fifa$Nationality <- gsub("Northern Ireland",'UK',fifa$Nationality)
+fifa$Nationality <- gsub("Republic of Ireland",'Ireland',fifa$Nationality)
+fifa$Nationality <- gsub("Scotland",'UK',fifa$Nationality)
+fifa$Nationality <- gsub("Korea DPR",'North Korea',fifa$Nationality)
+fifa$Nationality <- gsub("St Kitts Nevis",'St. Kitts & Nevis',fifa$Nationality)
+fifa$Nationality <- gsub("St Lucia",'St. Lucia',fifa$Nationality)
+fifa$Nationality <- gsub("United States",'US',fifa$Nationality)
+fifa$Nationality <- gsub("Wales",'UK',fifa$Nationality)
+fifa2 = merge(fifa,country, by.x = "Nationality", by.y = "nationality",all.x = T,sort = F)
+fifa2 = fifa2[order(fifa2$ID), ]
+```
+
+#country
+```{r}
+flag = fifa2[,which(names(fifa2)%in%c('Nationality','Flag'))]
+country = merge(country,flag, by.x = "nationality", by.y = "Nationality",all.x = T,sort = F)
+country = country[!duplicated(country[c("country_id")]), ]
+country = country[order(country$country_id), ]
+colnames(country) = c("nationality","country_id","continent_id","flag")
+dbWriteTable(con, "country", country,row.names=F, append=T)
+```
+# player_info
+```{r}
+player_info = fifa2[,which(names(fifa2)%in%c('ID','Name',"country_id","Height","Weight"))]
+colnames(player_info) = c("player_id","player_name","height","weight","country_id")
+dbWriteTable(con, "player_info", player_info,row.names=F, append=T)
+```
+# foot
+```{r}
+foot = fifa2[,which(names(fifa2)%in%c('ID','Preferred.Foot',"Weak.Foot"))]
+colnames(foot) = c("player_id","preferred_foot","weak_foot")
+dbWriteTable(con, "foot", foot,row.names=F, append=T)
+```
+# player_rating
+```{r}
+player_rating = fifa2[,which(names(fifa2)%in%c('ID','Overall',"Potential"))]
+colnames(player_rating) = c("player_id","overall_rating","potential")
+dbWriteTable(con, "player_rating", player_rating,row.names=F, append=T)
+```
+# player_value
+```{r}
+player_value = fifa2[,which(names(fifa2)%in%c('ID','Value'))]
+colnames(player_value) = c("player_id","value")
+dbWriteTable(con, "player_value", player_value,row.names=F, append=T)
+```
+# physical_skill
+```{r}
+physical_skill = fifa2[,which(names(fifa2)%in%c('ID','Body.Type',"Strength","Acceleration","Balance","SprintSpeed","Agility","Reactions","Jumping","ShotPower","Stamina"))]
+colnames(physical_skill) = c('player_id','body_type',"acceleration","sprint_speed","agility","reactions","balance","shortpower","jumping","stamina","strength")
+dbWriteTable(con, "physical_skill", physical_skill,row.names=F, append=T)
+```
+# technique
+```{r}
+technique = fifa2[,which(names(fifa2)%in%c('ID','BallControl',"Dribbling","Volleys","Curve","Crossing","Finishing","HeadingAccuracy","ShortPassing","FKAccuracy","LongPassing","LongShots","Interceptions","Positioning","Penalties","Marking","StandingTackle","SlidingTackle","GKDiving","GKHandling","GKKicking","GKPositioning","GKReflexes"))]
+colnames(technique) = c('player_id',"crossing","finishing","heading_accuracy","short_passing","volleys","dribbling","curve","fk_accuracy","long_passing","ball_control","longshots","interceptions","positioning","penalities","marking","standing_tackle","sliding_tackle","gk_diving","gk_handling","gk_kicking","gk_positioning","gk_relfexes")
+dbWriteTable(con, "technique", technique,row.names=F, append=T)
+```
+# game_intelligence
+```{r}
+game_intelligence = fifa2[,which(names(fifa2)%in%c('ID',"Composure","Vision","Aggression"))]
+colnames(game_intelligence) = c('player_id',"aggression","vision","composure")
+dbWriteTable(con, "game_intelligence", game_intelligence,row.names=F, append=T)
+```
+# position
+```{r}
+position = fifa2[,which(names(fifa2)%in%c('ID',"LS","ST","RS","LW","LF","CF","RF","RW","LAM","CAM","RAM","LM","LCM","CM","RCM","RM","LWB","LDM","CDM","RDM","RWB","LB","LCB","CB","RCB","RB"))]
+colnames(position) = tolower(colnames(position))
+colnames(position)[colnames(position)=="id"] <- "player_id"
+dbWriteTable(con, "position", position,row.names=F, append=T)
+```
+# age
+```{r}
+age = fifa2[,which(names(fifa2)%in%c('ID',"Age","Potential"))]
+colnames(age) = c('player_id',"age","potential")
+dbWriteTable(con, "age", age,row.names=F, append=T)
+```
+# player_position
+```{r}
+player_position = fifa2[,which(names(fifa2)%in%c('ID',"Position"))]
+colnames(player_position) = c('player_id',"preferred_position")
+dbWriteTable(con, "player_position", player_position,row.names=F, append=T)
+```
+# international_reputation
+```{r}
+international_reputation = fifa2[,which(names(fifa2)%in%c('ID',"International.Reputation"))]
+colnames(international_reputation) = c('player_id',"international_reputation")
+dbWriteTable(con, "international_reputation", international_reputation,row.names=F, append=T)
+```
+# club
+```{r}
+coach = read.csv("coach.csv")
+coach$club <- gsub("[:(:][:A-Z:]",NA,coach$club)
+coach = na.omit(coach)
+coach = coach[!duplicated(coach[c("club")]), ]
+coa = fifa2[,which(names(fifa2)%in%c('Club','Club.Logo'))]
+coa = coa[!duplicated(coa[c("Club")]), ]
+club = merge(coa,coach,by.x = "Club", by.y = "club", all = T, sort = F)
+club = club[order(club$Club), ]
+club$Club.Logo[1] = NA
+club$coach[1]=NA
+club = club[,which(names(club)%in%c('Club','Club.Logo','coach'))]
+club$club_id = 1:nrow(club)
+colnames(club) = c('club_name',"club_logo",'coaches','club_id')
+dbWriteTable(con, "club", club,row.names=F, append=T)
+```
+#player_club
+```{r}
+player = fifa2[,which(names(fifa2)%in%c('ID','Club','Jersey.Number','Loaned.From'))]
+club2 = club[,which(names(club)%in%c('club_name','club_id'))]
+player_club = merge(player,club2,by.x = 'Club',by.y = 'club_name',all.x = T)
+player_club = player_club[order(player_club$ID), ]
+player_club = player_club[,which(names(player_club)%in%c("ID","Jersey.Number","Loaned.From","club_id"))]
+colnames(player_club) = c('player_id',"jersey_number",'loaned_from','club_id')
+dbWriteTable(con, "player_club", player_club,row.names=F, append=T)
+```
+#contract
+```{r}
+contract = fifa2[,which(names(fifa2)%in%c('ID','Joined','Club','Wage','Contract.Valid.Until','Release.Clause'))]
+contract = merge(contract,club,by.x = 'Club',by.y = 'club_name',all.x=T)
+contract = contract[order(contract$ID), ]
+contract = contract[,which(names(contract)%in%c('ID','Wage','Joined','Contract.Valid.Until','Release.Clause','club_id'))]
+colnames(contract) = c('player_id','wage','joined_date','contract_valid_until','release_clause','club_id')
+dbWriteTable(con, "contract", contract,row.names=F, append=T)
+```
+#tournament
+```{r}
+world_cup = read.csv("WorldCups.csv", stringsAsFactors = FALSE)
+world_cup[21,2]= 'Russia'
+world_cup = world_cup[,1:5]
+world_cup$Country = paste("FIFA World Cup", world_cup$Country)
+world_cup$Winner <- gsub("England",'UK',world_cup$Winner)
+world_cup$Winner <- gsub("Germany FR",'Germany',world_cup$Winner)
+world_cup$Runners.Up <- gsub("Germany FR",'Germany',world_cup$Runners.Up)
+world_cup$Runners.Up <- gsub("Czechoslovakia",'Czech Republic',world_cup$Runners.Up)
+world_cup$Third <- gsub("Germany FR",'Germany',world_cup$Third)
+world_cup$Third <- gsub("USA",'US',world_cup$Third)
+First = merge(world_cup,country,by.x = 'Winner', by.y = 'nationality', all.x = T)
+First = First[order(First$Year), ]
+Second = merge(world_cup,country,by.x = 'Runners.Up', by.y = 'nationality', all.x = T)
+Second = Second[order(Second$Year), ]
+Third = merge(world_cup,country,by.x = 'Third', by.y = 'nationality', all.x = T)
+Third = Third[order(Third$Year), ]
+world_cup$Winner = First$country_id; world_cup$Runners.Up = Second$country_id ;world_cup$Third = Third$country_id
+colnames(world_cup) = c('year',"tournament_name","first_place",'second_place','third_place')
+dbWriteTable(con, "tournament_name", world_cup,row.names=F, append=T)
+```
+#league
+```{r}
+league = read.csv("league.csv",stringsAsFactors = F)
+league_club = merge(league,club,by.x = "club",by.y = "club_name",all.y = T)
+league = league_club[,which(names(league_club)%in%c("league","club_id"))]
+league = na.omit(league)
+league = league[order(league$league),]
+colnames(league) = c("league_name","club_id")
+dbWriteTable(con, "league", league,row.names=F, append=T)
+```
+#standings
+```{r}
+standings = read.csv("league2.csv",stringsAsFactors = F)
+standings = standings[which(standings$club!="Team"),]
+standings$rank = str_sub(standings$rank,1,1)
+standings$league <- gsub("[: :][:0-9:]+[:/:][:0-9:]+",'',standings$league)
+standings$season = '2018/19'
+standing = merge(standings,club,by.x = "club", by.y = "club_name",all.x = T)
+standing = standing[,which(names(standing)%in%c("league","rank","season","club_id"))]
+standing = na.omit(standing)
+standing = standing[order(standing$league,standing$rank), ]
+colnames(standing) = c("league_name","ranking","season","club_id")
+dbWriteTable(con, "standings", standing,row.names=F, append=T)
+```
+
+```{r}
+club
+```
+
